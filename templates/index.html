@@ -15,6 +15,16 @@
                 <i class="fas fa-graduation-cap"></i>
                 <h1>Whisper Class</h1>
             </div>
+            <div class="header-actions">
+                <div id="authButtons" class="auth-buttons">
+                    <button id="loginBtn" class="btn btn-outline">Login</button>
+                    <button id="signupBtn" class="btn btn-primary">Sign Up</button>
+                </div>
+                <div id="userInfo" class="user-info" style="display: none;">
+                    <span id="userEmail"></span>
+                    <button id="logoutBtn" class="btn btn-outline">Logout</button>
+                </div>
+            </div>
             <p class="tagline">Transform any video into your personal AI tutor</p>
         </header>
 
@@ -199,6 +209,41 @@
             <div class="spinner"></div>
             <h3>Processing Video</h3>
             <p>This may take a few minutes...</p>
+        </div>
+    </div>
+
+    <!-- Authentication Modal -->
+    <div id="authModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="authForm">
+                <h2 id="authTitle">Login</h2>
+                <form id="authFormElement">
+                    <div class="form-group">
+                        <label for="authEmail">Email:</label>
+                        <input type="email" id="authEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="authPassword">Password:</label>
+                        <input type="password" id="authPassword" required>
+                    </div>
+                    <button type="submit" id="authSubmitBtn" class="btn btn-primary">Login</button>
+                </form>
+                <p class="auth-switch">
+                    <span id="authSwitchText">Don't have an account?</span>
+                    <a href="#" id="authSwitchLink">Sign up</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unauthenticated overlay -->
+    <div id="authOverlay" class="auth-overlay" style="display: none;">
+        <div class="auth-prompt">
+            <i class="fas fa-lock"></i>
+            <h3>Login Required</h3>
+            <p>Please log in to access your AI-powered video tutor</p>
+            <button id="promptLoginBtn" class="btn btn-primary">Login</button>
         </div>
     </div>
 

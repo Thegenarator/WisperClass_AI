@@ -8,7 +8,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 from openai import OpenAI
-import youtube_dl
+import yt_dlp as youtube_dl
 try:
     from moviepy.editor import VideoFileClip
 except ImportError:
@@ -16,6 +16,9 @@ except ImportError:
 import requests
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
+from supabase import create_client, Client
+import jwt
+from functools import wraps
 
 load_dotenv()
 
@@ -25,6 +28,8 @@ CORS(app)
 # Database configuration
 DATABASE_URL = os.environ.get('DATABASE_URL')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+SUPABASE_URL = os.environ.get('SUPABASE_URL')
+SUPABASE_ANON_KEY = os.environ.get('SUPABASE_ANON_KEY')
 
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is required")
@@ -33,6 +38,13 @@ if not OPENAI_API_KEY:
 
 # Configure OpenAI
 client = OpenAI(api_key=OPENAI_API_KEY)
+
+# Configure Supabase (if available)
+supabase: Client = None
+if SUPABASE_URL and SUPABASE_ANON_KEY:
+    supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
 
 # Database setup
 engine = create_engine(DATABASE_URL)
@@ -44,6 +56,7 @@ class Video(Base):
     __tablename__ = "videos"
     
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, index=True)  # Supabase user ID
     title = Column(String, index=True)
     url = Column(String)
     transcript = Column(Text)
@@ -90,6 +103,58 @@ def get_db():
     finally:
         db.close()
 
+# Authentication decorator
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        if not token:
+            return jsonify({'error': 'Token is missing'}), 401
+        
+        try:
+            if token.startswith('Bearer '):
+                token = token[7:]
+            
+            # If using Supabase, verify the token with Supabase
+            if supabase:
+                try:
+                    user = supabase.auth.get_user(token)
+                    current_user_id = user.user.id
+                except Exception as e:
+                    return jsonify({'error': 'Token is invalid'}), 401
+            else:
+                # Fallback: decode JWT manually (for development)
+                try:
+                    data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+                    current_user_id = data['user_id']
+                except:
+                    return jsonify({'error': 'Token is invalid'}), 401
+            
+            return f(current_user_id, *args, **kwargs)
+        except Exception as e:
+            return jsonify({'error': 'Token is invalid'}), 401
+    
+    return decorated
+
+def get_current_user():
+    """Get current user from request headers"""
+    token = request.headers.get('Authorization')
+    if not token:
+        return None
+    
+    try:
+        if token.startswith('Bearer '):
+            token = token[7:]
+        
+        if supabase:
+            user = supabase.auth.get_user(token)
+            return user.user.id
+        else:
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+            return data['user_id']
+    except:
+        return None
+
 def extract_audio_from_video(video_path):
     """Extract audio from video file"""
     if VideoFileClip is None:
@@ -126,7 +191,7 @@ def generate_summary(transcript):
     """Generate summary using OpenAI"""
     try:
         response = client.chat.completions.create(
-            model="gpt-5",  # the newest OpenAI model is "gpt-5" which was released August 7, 2025.
+            model="gpt-4",
             messages=[
                 {"role": "system", "content": "You are an educational assistant. Create a comprehensive summary of the following video transcript that highlights key learning points, main concepts, and important details."},
                 {"role": "user", "content": f"Please summarize this educational content:\n\n{transcript}"}
@@ -142,9 +207,9 @@ def generate_quiz(transcript):
     """Generate quiz questions using OpenAI"""
     try:
         response = client.chat.completions.create(
-            model="gpt-5",  # the newest OpenAI model is "gpt-5" which was released August 7, 2025.
+            model="gpt-4",
             messages=[
-                {"role": "system", "content": "You are an educational assistant. Create 5 multiple-choice quiz questions based on the video content. Return the response as JSON with this format: {\"questions\": [{\"question\": \"...\", \"options\": [\"A\", \"B\", \"C\", \"D\"], \"correct\": 0, \"explanation\": \"...\"}]}"},
+                {"role": "system", "content": "You are an educational assistant. Create 3 multiple-choice questions and 2 short answer questions based on the video content. Return the response as JSON with this format: {\"questions\": [{\"type\": \"multiple_choice\", \"question\": \"...\", \"options\": [\"A\", \"B\", \"C\", \"D\"], \"correct\": 0, \"explanation\": \"...\"}, {\"type\": \"short_answer\", \"question\": \"...\", \"sample_answer\": \"...\", \"explanation\": \"...\"}]}"},
                 {"role": "user", "content": f"Create quiz questions for this content:\n\n{transcript}"}
             ],
             response_format={"type": "json_object"}
@@ -158,7 +223,7 @@ def generate_flashcards(transcript):
     """Generate flashcards using OpenAI"""
     try:
         response = client.chat.completions.create(
-            model="gpt-5",  # the newest OpenAI model is "gpt-5" which was released August 7, 2025.
+            model="gpt-4",
             messages=[
                 {"role": "system", "content": "You are an educational assistant. Create 8 flashcards with key terms, concepts, and facts from the video content. Return as JSON: {\"cards\": [{\"front\": \"term/question\", \"back\": \"definition/answer\"}]}"},
                 {"role": "user", "content": f"Create flashcards for this content:\n\n{transcript}"}
@@ -190,8 +255,121 @@ def download_youtube_video(url):
 def index():
     return render_template('index.html')
 
+# Authentication routes
+@app.route('/api/auth/signup', methods=['POST'])
+def signup():
+    """Handle user signup"""
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+        
+        if not email or not password:
+            return jsonify({'error': 'Email and password required'}), 400
+        
+        if supabase:
+            # Use Supabase authentication
+            try:
+                response = supabase.auth.sign_up({
+                    "email": email,
+                    "password": password
+                })
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Account created successfully. Please check your email for verification.',
+                    'user': {
+                        'id': response.user.id,
+                        'email': response.user.email
+                    }
+                })
+            except Exception as e:
+                return jsonify({'error': str(e)}), 400
+        else:
+            # Fallback: simple JWT token for development
+            user_id = f"user_{hash(email) % 10000}"
+            token = jwt.encode({
+                'user_id': user_id,
+                'email': email,
+                'exp': datetime.utcnow().timestamp() + 3600 * 24 * 7  # 7 days
+            }, app.config['SECRET_KEY'], algorithm='HS256')
+            
+            return jsonify({
+                'success': True,
+                'message': 'Account created successfully',
+                'user': {'id': user_id, 'email': email},
+                'token': token
+            })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    """Handle user login"""
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+        
+        if not email or not password:
+            return jsonify({'error': 'Email and password required'}), 400
+        
+        if supabase:
+            # Use Supabase authentication
+            try:
+                response = supabase.auth.sign_in_with_password({
+                    "email": email,
+                    "password": password
+                })
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Login successful',
+                    'user': {
+                        'id': response.user.id,
+                        'email': response.user.email
+                    },
+                    'token': response.session.access_token
+                })
+            except Exception as e:
+                return jsonify({'error': 'Invalid credentials'}), 401
+        else:
+            # Fallback: simple JWT token for development
+            user_id = f"user_{hash(email) % 10000}"
+            token = jwt.encode({
+                'user_id': user_id,
+                'email': email,
+                'exp': datetime.utcnow().timestamp() + 3600 * 24 * 7  # 7 days
+            }, app.config['SECRET_KEY'], algorithm='HS256')
+            
+            return jsonify({
+                'success': True,
+                'message': 'Login successful',
+                'user': {'id': user_id, 'email': email},
+                'token': token
+            })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/auth/logout', methods=['POST'])
+def logout():
+    """Handle user logout"""
+    try:
+        if supabase:
+            supabase.auth.sign_out()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Logout successful'
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/upload', methods=['POST'])
-def upload_video():
+@token_required
+def upload_video(current_user_id):
     """Handle video upload"""
     db = get_db()
     
@@ -208,8 +386,8 @@ def upload_video():
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
             
-            # Create video entry in database
-            video = Video(title=filename, url=filepath)
+            # Create video entry in database with user_id
+            video = Video(title=filename, url=filepath, user_id=current_user_id)
             db.add(video)
             db.commit()
             db.refresh(video)
@@ -228,7 +406,8 @@ def upload_video():
         db.close()
 
 @app.route('/api/process-url', methods=['POST'])
-def process_url():
+@token_required
+def process_url(current_user_id):
     """Process YouTube URL"""
     db = get_db()
     
@@ -239,13 +418,16 @@ def process_url():
         if not url:
             return jsonify({'error': 'No URL provided'}), 400
         
+        if 'youtube.com' not in url and 'youtu.be' not in url:
+            return jsonify({'error': 'Currently only YouTube URLs are supported'}), 400
+        
         # Download video
         filepath, title = download_youtube_video(url)
         if not filepath:
             return jsonify({'error': 'Failed to download video'}), 400
         
-        # Create video entry
-        video = Video(title=title, url=url)
+        # Create video entry with user_id
+        video = Video(title=title, url=url, user_id=current_user_id)
         db.add(video)
         db.commit()
         db.refresh(video)
@@ -263,14 +445,15 @@ def process_url():
         db.close()
 
 @app.route('/api/process/<int:video_id>', methods=['POST'])
-def process_video(video_id):
+@token_required
+def process_video(current_user_id, video_id):
     """Process video to generate transcript, summary, quiz, and flashcards"""
     db = get_db()
     
     try:
-        video = db.query(Video).filter(Video.id == video_id).first()
+        video = db.query(Video).filter(Video.id == video_id, Video.user_id == current_user_id).first()
         if not video:
-            return jsonify({'error': 'Video not found'}), 404
+            return jsonify({'error': 'Video not found or access denied'}), 404
         
         # Extract audio from video
         video_path = video.url if video.url.startswith(UPLOAD_FOLDER) else video.url
@@ -324,7 +507,8 @@ def process_video(video_id):
         db.close()
 
 @app.route('/api/chat', methods=['POST'])
-def chat():
+@token_required
+def chat(current_user_id):
     """Chat with AI about video content"""
     db = get_db()
     
@@ -336,13 +520,13 @@ def chat():
         if not video_id or not message:
             return jsonify({'error': 'Video ID and message required'}), 400
         
-        video = db.query(Video).filter(Video.id == video_id).first()
+        video = db.query(Video).filter(Video.id == video_id, Video.user_id == current_user_id).first()
         if not video or not video.transcript:
-            return jsonify({'error': 'Video not found or not processed'}), 404
+            return jsonify({'error': 'Video not found, not processed, or access denied'}), 404
         
         # Generate response using video transcript as context
         response = client.chat.completions.create(
-            model="gpt-5",  # the newest OpenAI model is "gpt-5" which was released August 7, 2025.
+            model="gpt-4",
             messages=[
                 {"role": "system", "content": f"You are an AI tutor helping students understand video content. Use this transcript as context to answer questions: {str(video.transcript)[:3000]}..."},
                 {"role": "user", "content": message}
@@ -360,12 +544,13 @@ def chat():
         db.close()
 
 @app.route('/api/videos')
-def get_videos():
+@token_required
+def get_videos(current_user_id):
     """Get all processed videos"""
     db = get_db()
     
     try:
-        videos = db.query(Video).filter(Video.processed == True).all()
+        videos = db.query(Video).filter(Video.processed == True, Video.user_id == current_user_id).all()
         return jsonify([{
             'id': v.id,
             'title': v.title,
@@ -379,14 +564,15 @@ def get_videos():
         db.close()
 
 @app.route('/api/video/<int:video_id>')
-def get_video(video_id):
+@token_required
+def get_video(current_user_id, video_id):
     """Get specific video details"""
     db = get_db()
     
     try:
-        video = db.query(Video).filter(Video.id == video_id).first()
+        video = db.query(Video).filter(Video.id == video_id, Video.user_id == current_user_id).first()
         if not video:
-            return jsonify({'error': 'Video not found'}), 404
+            return jsonify({'error': 'Video not found or access denied'}), 404
         
         quiz = db.query(Quiz).filter(Quiz.video_id == video_id).first()
         flashcards = db.query(Flashcard).filter(Flashcard.video_id == video_id).first()

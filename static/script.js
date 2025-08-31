@@ -4,6 +4,8 @@ let currentQuiz = null;
 let currentFlashcards = null;
 let currentFlashcardIndex = 0;
 let quizResults = [];
+let authToken = localStorage.getItem('authToken');
+let currentUser = JSON.parse(localStorage.getItem('currentUser'));
 
 // DOM elements
 const tabBtns = document.querySelectorAll('.tab-btn');
@@ -34,13 +36,221 @@ const loadingOverlay = document.getElementById('loadingOverlay');
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
+    initializeAuth();
     initializeTabs();
     initializeFileUpload();
     initializeUrlProcessing();
     initializeStudyModes();
     initializeChat();
-    loadVideoLibrary();
+    
+    if (authToken) {
+        loadVideoLibrary();
+        updateAuthUI();
+    } else {
+        showAuthOverlay();
+    }
 });
+
+// Authentication functionality
+function initializeAuth() {
+    const loginBtn = document.getElementById('loginBtn');
+    const signupBtn = document.getElementById('signupBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const authModal = document.getElementById('authModal');
+    const authOverlay = document.getElementById('authOverlay');
+    const authForm = document.getElementById('authFormElement');
+    const authTitle = document.getElementById('authTitle');
+    const authSubmitBtn = document.getElementById('authSubmitBtn');
+    const authSwitchText = document.getElementById('authSwitchText');
+    const authSwitchLink = document.getElementById('authSwitchLink');
+    const closeModal = document.querySelector('.close');
+    const promptLoginBtn = document.getElementById('promptLoginBtn');
+    
+    let isLoginMode = true;
+    
+    // Event listeners
+    loginBtn?.addEventListener('click', () => showAuthModal(true));
+    signupBtn?.addEventListener('click', () => showAuthModal(false));
+    promptLoginBtn?.addEventListener('click', () => showAuthModal(true));
+    logoutBtn?.addEventListener('click', handleLogout);
+    closeModal?.addEventListener('click', hideAuthModal);
+    authSwitchLink?.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleAuthMode();
+    });
+    
+    authForm?.addEventListener('submit', handleAuthSubmit);
+    
+    // Modal click outside to close
+    authModal?.addEventListener('click', (e) => {
+        if (e.target === authModal) {
+            hideAuthModal();
+        }
+    });
+    
+    function showAuthModal(loginMode = true) {
+        isLoginMode = loginMode;
+        updateAuthModal();
+        authModal.style.display = 'flex';
+        authOverlay.style.display = 'none';
+    }
+    
+    function hideAuthModal() {
+        authModal.style.display = 'none';
+    }
+    
+    function toggleAuthMode() {
+        isLoginMode = !isLoginMode;
+        updateAuthModal();
+    }
+    
+    function updateAuthModal() {
+        if (isLoginMode) {
+            authTitle.textContent = 'Login';
+            authSubmitBtn.textContent = 'Login';
+            authSwitchText.textContent = "Don't have an account?";
+            authSwitchLink.textContent = 'Sign up';
+        } else {
+            authTitle.textContent = 'Sign Up';
+            authSubmitBtn.textContent = 'Sign Up';
+            authSwitchText.textContent = 'Already have an account?';
+            authSwitchLink.textContent = 'Login';
+        }
+    }
+    
+    async function handleAuthSubmit(e) {
+        e.preventDefault();
+        
+        const email = document.getElementById('authEmail').value;
+        const password = document.getElementById('authPassword').value;
+        
+        if (!email || !password) {
+            showNotification('Please fill in all fields', 'error');
+            return;
+        }
+        
+        const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup';
+        
+        try {
+            authSubmitBtn.disabled = true;
+            authSubmitBtn.textContent = 'Processing...';
+            
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password }),
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                authToken = data.token;
+                currentUser = data.user;
+                
+                localStorage.setItem('authToken', authToken);
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                hideAuthModal();
+                updateAuthUI();
+                loadVideoLibrary();
+                showNotification(data.message, 'success');
+            } else {
+                showNotification(data.error || 'Authentication failed', 'error');
+            }
+        } catch (error) {
+            console.error('Auth error:', error);
+            showNotification('Network error. Please try again.', 'error');
+        } finally {
+            authSubmitBtn.disabled = false;
+            authSubmitBtn.textContent = isLoginMode ? 'Login' : 'Sign Up';
+        }
+    }
+    
+    function handleLogout() {
+        authToken = null;
+        currentUser = null;
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
+        
+        updateAuthUI();
+        showAuthOverlay();
+        showNotification('Logged out successfully', 'success');
+    }
+}
+
+function updateAuthUI() {
+    const authButtons = document.getElementById('authButtons');
+    const userInfo = document.getElementById('userInfo');
+    const userEmail = document.getElementById('userEmail');
+    
+    if (authToken && currentUser) {
+        authButtons.style.display = 'none';
+        userInfo.style.display = 'flex';
+        userEmail.textContent = currentUser.email;
+    } else {
+        authButtons.style.display = 'flex';
+        userInfo.style.display = 'none';
+    }
+}
+
+function showAuthOverlay() {
+    const authOverlay = document.getElementById('authOverlay');
+    authOverlay.style.display = 'flex';
+}
+
+function hideAuthOverlay() {
+    const authOverlay = document.getElementById('authOverlay');
+    authOverlay.style.display = 'none';
+}
+
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    
+    // Add to document
+    document.body.appendChild(notification);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
+}
+
+// Helper function to make authenticated API calls
+async function makeAuthenticatedRequest(url, options = {}) {
+    if (!authToken) {
+        showAuthOverlay();
+        throw new Error('Authentication required');
+    }
+    
+    const headers = {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+    
+    const response = await fetch(url, {
+        ...options,
+        headers
+    });
+    
+    if (response.status === 401) {
+        // Token expired or invalid
+        authToken = null;
+        currentUser = null;
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
+        updateAuthUI();
+        showAuthOverlay();
+        throw new Error('Authentication expired');
+    }
+    
+    return response;
+}
 
 // Tab functionality
 function initializeTabs() {
@@ -166,7 +376,12 @@ function initializeChat() {
 // File upload handler
 async function handleFileUpload(file) {
     if (!file.type.startsWith('video/')) {
-        alert('Please select a valid video file.');
+        showNotification('Please select a valid video file.', 'error');
+        return;
+    }
+    
+    if (!authToken) {
+        showAuthOverlay();
         return;
     }
     
@@ -178,6 +393,9 @@ async function handleFileUpload(file) {
     try {
         const response = await fetch('/api/upload', {
             method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            },
             body: formData
         });
         
