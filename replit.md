@@ -1,67 +1,95 @@
-# Designer Data Insights Platform
+# Whisper Class - AI Video Tutor Platform
 
 ## Overview
 
-Designer Data Insights is a mobile-first data analysis platform built with Streamlit, specifically designed for designers to explore and understand their data through intuitive visualizations and automated trend detection. The application provides a responsive, touch-friendly interface that adapts to mobile devices while delivering powerful analytical capabilities including statistical analysis, correlation detection, and interactive visualizations.
+Whisper Class is an AI-powered educational platform that transforms any uploaded or linked educational video into a private tutor. The application generates comprehensive summaries, interactive quizzes, flashcards, and provides a chat assistant that answers questions based on the video content. Built with Flask backend and vanilla HTML/CSS/JS frontend, it integrates with OpenAI's APIs for transcription and content generation, with Supabase PostgreSQL for data persistence.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
 
-## System Architecture
+## Recent Changes
+
+- **August 31, 2025**: Complete rebuild from Streamlit data analysis tool to Flask-based AI video tutor
+- Implemented full-stack video processing pipeline with OpenAI integration
+- Created responsive web interface with three main sections: Upload, Library, and Study
+- Added real-time AI-powered content generation and chat functionality
+
+## Project Architecture
+
+### Backend Architecture
+- **Framework**: Flask with CORS support for cross-origin requests
+- **Database**: Supabase PostgreSQL with SQLAlchemy ORM
+- **API Integration**: OpenAI GPT-5 for content generation and Whisper for transcription
+- **File Handling**: Video upload support (MP4, AVI, MOV, WMV, FLV, WebM) and YouTube URL processing
+- **Data Models**: Videos, Quizzes, and Flashcards with relational structure
 
 ### Frontend Architecture
-- **Framework**: Streamlit with mobile-first responsive design
-- **Layout Strategy**: Wide layout with collapsible sidebar optimized for mobile screens
-- **Styling**: Custom CSS with mobile-specific optimizations including touch-friendly buttons and responsive containers
-- **Component Structure**: Modular component system with dedicated mobile UI components for consistent user experience
+- **Technology**: Vanilla HTML5, CSS3, and JavaScript
+- **Design**: Responsive mobile-first design with gradient backgrounds and modern UI
+- **Navigation**: Tab-based interface with Upload, Library, and Study sections
+- **Components**: Interactive quiz system, flip-card flashcards, and real-time chat interface
 
-### Data Processing Pipeline
-- **Core Processor**: `DataProcessor` class handles data validation, cleaning, and preprocessing
-- **Supported Formats**: CSV and JSON file uploads with extensible format support
-- **Validation Layer**: Comprehensive data quality checks including missing value detection, column type analysis, and basic dataset health metrics
-- **Memory Management**: Optimized for mobile constraints with efficient data handling
+### AI Processing Pipeline
+- **Video Ingestion**: File upload or YouTube URL download via youtube-dl
+- **Audio Extraction**: MoviePy integration for extracting audio from video files
+- **Transcription**: OpenAI Whisper API for speech-to-text conversion
+- **Content Generation**: GPT-5 powered summary, quiz, and flashcard creation
+- **Chat Assistant**: Context-aware Q&A using video transcript as knowledge base
 
-### Analytics Engine
-- **Trend Detection**: `TrendAnalyzer` class provides automated pattern recognition using statistical methods
-- **Analysis Types**: 
-  - Numerical trend analysis using statistical tests
-  - Categorical pattern detection
-  - Time-based trend identification
-  - Correlation analysis with configurable thresholds
-- **Machine Learning**: Integration with scikit-learn for PCA and standardization
-- **Mobile Optimization**: Results limited to top 10 insights to prevent information overload on small screens
+### Database Schema
+- **Videos Table**: Stores video metadata, transcripts, summaries, and processing status
+- **Quizzes Table**: JSON-formatted multiple-choice questions with explanations
+- **Flashcards Table**: JSON-formatted front/back card pairs for spaced repetition
+- **Relationships**: One-to-one relationships between videos and their study materials
 
-### Visualization System
-- **Charting Library**: Plotly Express and Plotly Graph Objects for interactive visualizations
-- **Mobile Layout**: Standardized mobile-friendly chart configurations with optimized dimensions and touch interactions
-- **Designer-Focused Palette**: Curated color scheme tailored for design professionals
-- **Chart Types**: Distribution plots, correlation matrices, trend visualizations, and statistical overlays
+## Core Features
 
-### Session Management
-- **State Persistence**: Streamlit session state for maintaining data and analysis results across interactions
-- **Mobile View Toggle**: Adaptive interface that responds to device capabilities
-- **Performance Optimization**: Lazy loading and efficient state management for mobile performance
+### Video Processing
+- **Upload Support**: Drag-and-drop file upload with progress tracking
+- **YouTube Integration**: Direct URL processing with automatic download
+- **AI Transcription**: Automatic speech-to-text using OpenAI Whisper
+- **Content Analysis**: Intelligent summary generation highlighting key learning points
+
+### Study Materials Generation
+- **Smart Summaries**: Comprehensive overviews focusing on educational content
+- **Interactive Quizzes**: 5 multiple-choice questions with explanations and scoring
+- **Flashcards**: 8 key concept cards with term/definition pairs
+- **Adaptive Content**: AI-generated materials tailored to video content type
+
+### Learning Interface
+- **Study Modes**: Summary review, quiz taking, flashcard practice, and AI chat
+- **Progress Tracking**: Quiz scoring and completion status
+- **Interactive Elements**: Clickable quiz options, flip animations for flashcards
+- **Mobile Optimization**: Touch-friendly interface with responsive design
+
+### AI Chat Assistant
+- **Context-Aware**: Uses video transcript to provide relevant answers
+- **Educational Focus**: Tutor-style responses that promote understanding
+- **Real-Time**: Instant responses with typing indicators
+- **Conversation History**: Persistent chat sessions during study periods
 
 ## External Dependencies
 
-### Core Libraries
-- **Streamlit**: Web application framework for rapid prototyping and deployment
-- **Pandas**: Data manipulation and analysis library for handling structured data
-- **NumPy**: Numerical computing foundation for statistical operations
-- **Plotly**: Interactive visualization library with mobile-responsive charts
+### Core Backend
+- **Flask**: Web application framework with routing and request handling
+- **SQLAlchemy**: ORM for database operations and model definitions
+- **OpenAI**: GPT-5 and Whisper API integration for AI features
+- **MoviePy**: Video processing and audio extraction capabilities
+- **youtube-dl**: YouTube video downloading and metadata extraction
 
-### Analytics and Machine Learning
-- **SciPy**: Scientific computing library for statistical analysis and hypothesis testing
-- **scikit-learn**: Machine learning toolkit for preprocessing, PCA, and pattern recognition algorithms
+### Frontend Libraries
+- **Font Awesome**: Icon library for consistent UI elements
+- **CSS3 Animations**: Custom transitions and hover effects
+- **Vanilla JavaScript**: No framework dependencies for lightweight performance
 
-### Development and Deployment
-- **Python 3.x**: Runtime environment with modern Python features
-- **CSS3**: Custom styling for mobile responsiveness and designer-friendly aesthetics
-- **HTML5**: Markup integration through Streamlit's unsafe HTML rendering for enhanced mobile UI
+### Development Tools
+- **Flask-CORS**: Cross-origin resource sharing for API access
+- **python-dotenv**: Environment variable management
+- **psycopg2-binary**: PostgreSQL database adapter
 
-### Potential Future Integrations
-- Database connectivity (SQLite, PostgreSQL) for persistent data storage
-- Cloud storage services (AWS S3, Google Cloud Storage) for large dataset handling
-- Export services for sharing insights and visualizations
-- Authentication systems for multi-user environments
+### Production Considerations
+- **Environment Variables**: Secure API key and database URL management
+- **Error Handling**: Comprehensive try-catch blocks with user-friendly messages
+- **File Management**: Temporary file cleanup and storage optimization
+- **Rate Limiting**: Considerations for OpenAI API usage limits

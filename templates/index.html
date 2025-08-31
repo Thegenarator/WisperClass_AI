@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whisper Class - AI Video Tutor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-graduation-cap"></i>
+                <h1>Whisper Class</h1>
+            </div>
+            <p class="tagline">Transform any video into your personal AI tutor</p>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav-tabs">
+            <button class="tab-btn active" data-tab="upload">
+                <i class="fas fa-upload"></i> Upload
+            </button>
+            <button class="tab-btn" data-tab="library">
+                <i class="fas fa-book"></i> Library
+            </button>
+            <button class="tab-btn" data-tab="study">
+                <i class="fas fa-brain"></i> Study
+            </button>
+        </nav>
+
+        <!-- Upload Tab -->
+        <div id="upload" class="tab-content active">
+            <div class="upload-section">
+                <h2><i class="fas fa-cloud-upload-alt"></i> Add Your Video</h2>
+                
+                <!-- File Upload -->
+                <div class="upload-method">
+                    <h3>Upload Video File</h3>
+                    <div class="file-upload-area" id="fileUploadArea">
+                        <div class="upload-icon">
+                            <i class="fas fa-video"></i>
+                        </div>
+                        <p>Drag & drop your video here or click to browse</p>
+                        <p class="file-info">Supports MP4, AVI, MOV, WMV (Max 100MB)</p>
+                        <input type="file" id="videoFile" accept="video/*" style="display: none;">
+                    </div>
+                </div>
+
+                <div class="divider">
+                    <span>OR</span>
+                </div>
+
+                <!-- URL Input -->
+                <div class="upload-method">
+                    <h3>YouTube Video URL</h3>
+                    <div class="url-input-group">
+                        <input type="text" id="videoUrl" placeholder="Paste YouTube URL here..." class="url-input">
+                        <button id="processUrl" class="btn btn-primary">
+                            <i class="fas fa-link"></i> Process
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Progress -->
+                <div id="uploadProgress" class="progress-container" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <p id="progressText">Processing...</p>
+                </div>
+
+                <!-- Upload Result -->
+                <div id="uploadResult" class="result-container" style="display: none;">
+                    <div class="success-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h3>Video Processed Successfully!</h3>
+                    <p id="resultMessage"></p>
+                    <button id="viewStudyMaterials" class="btn btn-success">
+                        <i class="fas fa-eye"></i> View Study Materials
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Library Tab -->
+        <div id="library" class="tab-content">
+            <div class="library-section">
+                <h2><i class="fas fa-book"></i> Your Video Library</h2>
+                <div id="videoLibrary" class="video-grid">
+                    <!-- Videos will be loaded here -->
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Loading your videos...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Study Tab -->
+        <div id="study" class="tab-content">
+            <div class="study-section">
+                <div id="noVideoSelected" class="empty-state">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h3>Select a video to start studying</h3>
+                    <p>Choose a video from your library or upload a new one</p>
+                </div>
+
+                <div id="studyContent" class="study-content" style="display: none;">
+                    <!-- Video Info -->
+                    <div class="video-info">
+                        <h2 id="studyVideoTitle">Video Title</h2>
+                    </div>
+
+                    <!-- Study Mode Selector -->
+                    <div class="study-modes">
+                        <button class="study-mode-btn active" data-mode="summary">
+                            <i class="fas fa-file-alt"></i> Summary
+                        </button>
+                        <button class="study-mode-btn" data-mode="quiz">
+                            <i class="fas fa-question-circle"></i> Quiz
+                        </button>
+                        <button class="study-mode-btn" data-mode="flashcards">
+                            <i class="fas fa-clone"></i> Flashcards
+                        </button>
+                        <button class="study-mode-btn" data-mode="chat">
+                            <i class="fas fa-comments"></i> Chat
+                        </button>
+                    </div>
+
+                    <!-- Summary Mode -->
+                    <div id="summaryMode" class="study-mode-content active">
+                        <div class="summary-container">
+                            <h3><i class="fas fa-file-alt"></i> Video Summary</h3>
+                            <div id="summaryContent" class="content-box">
+                                <div class="loading">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <p>Loading summary...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quiz Mode -->
+                    <div id="quizMode" class="study-mode-content">
+                        <div class="quiz-container">
+                            <h3><i class="fas fa-question-circle"></i> Interactive Quiz</h3>
+                            <div id="quizContent" class="content-box">
+                                <!-- Quiz will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Flashcards Mode -->
+                    <div id="flashcardsMode" class="study-mode-content">
+                        <div class="flashcards-container">
+                            <h3><i class="fas fa-clone"></i> Flashcards</h3>
+                            <div id="flashcardsContent" class="content-box">
+                                <!-- Flashcards will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Mode -->
+                    <div id="chatMode" class="study-mode-content">
+                        <div class="chat-container">
+                            <h3><i class="fas fa-comments"></i> Ask Your AI Tutor</h3>
+                            <div class="chat-box">
+                                <div id="chatMessages" class="chat-messages">
+                                    <div class="chat-message bot-message">
+                                        <div class="message-avatar">
+                                            <i class="fas fa-robot"></i>
+                                        </div>
+                                        <div class="message-content">
+                                            <p>Hi! I'm your AI tutor. Ask me anything about this video and I'll help you understand the content better.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="chat-input-container">
+                                    <input type="text" id="chatInput" placeholder="Ask a question about the video..." class="chat-input">
+                                    <button id="sendMessage" class="btn btn-primary">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <h3>Processing Video</h3>
+            <p>This may take a few minutes...</p>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
