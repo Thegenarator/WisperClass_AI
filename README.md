@@ -6,6 +6,15 @@ Access the AI Tuto by clicking the link below
 URL:https://53c82044-278c-44c7-b436-be9edcf31e0a-00-15bo4fvx921cj.janeway.replit.dev/
 
 
+**Collaborators**
+
+1. Kibiwott Kamoo: Full-Stack Developer & AI Integration Lead
+
+2. Godrick Mlewa: Frontend Developer & UX Designer Lead
+
+3. Fabian kipyegon rono: Frontend Developer & Pitch Lead
+
+
 
 **Overview**
 Whisper Class is an AI-powered educational platform that transforms any uploaded or linked educational video into a private tutor. The application generates comprehensive summaries, interactive quizzes, flashcards, and provides a chat assistant that answers questions based on the video content. Built with Flask backend and vanilla HTML/CSS/JS frontend, it integrates with OpenAI's APIs for transcription and content generation, with Supabase PostgreSQL for data persistence.
