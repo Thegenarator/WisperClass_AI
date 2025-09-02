@@ -19,7 +19,17 @@ URL:https://53c82044-278c-44c7-b436-be9edcf31e0a-00-15bo4fvx921cj.janeway.replit
 **Overview**
 Whisper Class is an AI-powered educational platform that transforms any uploaded or linked educational video into a private tutor. The application generates comprehensive summaries, interactive quizzes, flashcards, and provides a chat assistant that answers questions based on the video content. Built with Flask backend and vanilla HTML/CSS/JS frontend, it integrates with OpenAI's APIs for transcription and content generation, with Supabase PostgreSQL for data persistence.
 
-User Preferences
+In Summary, It generates:
+- ✅ Video Transcripts (via Whisper)
+- ✅ Intelligent Summaries
+- ✅ Interactive Quizzes
+- ✅ Flashcards
+- ✅ AI Chat Assistant for Q&A
+
+Tailored for students with ADHD and diverse learning needs, Whisper Class helps learners engage more deeply with educational video content.
+
+**User Preferences**
+
 Preferred communication style: Simple, everyday language.
 
 **Project Architecture**
@@ -101,6 +111,19 @@ Font Awesome: Icon library for consistent UI elements
 CSS3 Animations: Custom transitions and hover effects
 Vanilla JavaScript: No framework dependencies for lightweight performance
 
+**Project Structure**
+
+whisper-class/
+├── app.py                  # Main Flask application
+├── templates/              # HTML templates
+├── static/                 # CSS and JS files
+├── utils/                  # Helper functions (transcription, AI, etc.)
+├── .streamlit/             # Streamlit configs (if used later)
+├── requirements.txt        # Python dependencies
+├── README.md               # Project info
+└── .env                    # Environment variables (not committed)
+
+
 **Development Tools**
 
 Flask-CORS: Cross-origin resource sharing for API access
@@ -112,3 +135,13 @@ Environment Variables: Secure API key and database URL management
 Error Handling: Comprehensive try-catch blocks with user-friendly messages
 File Management: Temporary file cleanup and storage optimization
 Rate Limiting: Considerations for OpenAI API usage limits
+
+
+**Contact**
+
+Have questions or suggestions? Reach us at:
+
+Email: kibiwottkamoo@gmail.com
+
+bit202432699@mylife.mku.ac.ke, funwell113@gmail.
+
